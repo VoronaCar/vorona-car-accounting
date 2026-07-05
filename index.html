@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <style>
+      :root {
+        --brand-blue: #013AD1;        
+        --brand-blue-hover: #A2D0FE;  
+        --brand-green: #80C43C;       
+        --bg-color: #f4f7f6;          
+        --radius: 16px;               
+      }
+      body { 
+        margin-bottom: 90px; 
+        background-color: var(--bg-color); 
+        font-family: system-ui, -apple-system, sans-serif;
+      }
+      .navbar { background-color: var(--brand-blue) !important; }
+      .navbar-brand { font-weight: 600; letter-spacing: 0.5px; }
+      .bottom-nav { 
+        position: fixed; bottom: 0; width: 100%; 
+        background-color: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px);
+        border-top: 1px solid #ebebeb; 
+        display: flex; justify-content: space-around; 
+        padding: 12px 0 15px 0; z-index: 1000;
+        border-top-left-radius: var(--radius); border-top-right-radius: var(--radius);
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
+      }
+      .nav-item { text-align: center; color: #adb5bd; text-decoration: none; font-size: 12px; cursor: pointer; transition: all 0.2s ease; }
+      .nav-item i { font-size: 22px; display: block; margin-bottom: 2px; transition: transform 0.2s;}
+      .nav-item.active { color: var(--brand-blue); font-weight: 600; }
+      .nav-item.active i { transform: translateY(-3px); }
+      .card { border: none; border-radius: var(--radius); box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
+      .btn { border-radius: 12px; font-weight: 600; transition: all 0.2s ease; }
+      .form-control, .form-select { border-radius: 10px; border-color: #dee2e6; }
+      .form-control:focus, .form-select:focus { box-shadow: none; border-color: var(--brand-blue); }
+      .btn-brand { background-color: var(--brand-blue); color: white; border: 2px solid var(--brand-blue); }
+      .btn-brand:hover { background-color: var(--brand-blue-hover); color: white; border-color: var(--brand-blue-hover); }
+      .text-success { color: var(--brand-green) !important; }
+      .bg-success { background-color: var(--brand-green) !important; color: white !important;}
+      .text-primary { color: var(--brand-blue) !important; }
+      .bg-primary { background-color: var(--brand-blue) !important; color: white !important;}
+      .table-custom { background: white; border-radius: var(--radius); overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
+      .list-group-item { border-color: #f1f3f5; }
+      .modal-content { border-radius: var(--radius); border: none;}
+    </style>
+  </head>
+  <body>
+
+    <nav class="navbar navbar-dark shadow-sm">
+      <div class="container-fluid justify-content-center py-2">
+        <span class="navbar-brand mb-0 fs-5"><i class="bi bi-tools me-2"></i>Ворона Car - Учет</span>
+      </div>
+    </nav>
+
+    <div id="screen-main" class="container mt-4">
+      <div class="card mb-4 bg-white">
+        <div class="card-body text-center py-4">
+          <h6 class="text-muted text-uppercase fw-bold mb-2" style="font-size: 11px; letter-spacing: 1px;">Текущий баланс</h6>
+          <h1 id="main-balance" class="text-success fw-bolder mb-0">
+            <span class="spinner-border spinner-border-sm" role="status"></span>
+          </h1>
+        </div>
+      </div>
+      
+      <div class="row g-3 mb-4">
+        <div class="col-6">
+          <button class="btn btn-brand w-100 py-2 shadow-sm" type="button" data-bs-toggle="modal" data-bs-target="#addCarModal">
+            <i class="bi bi-car-front-fill fs-4 d-block mb-1"></i>
+            <span class="small">Принять авто</span>
+          </button>
+        </div>
+        <div class="col-6">
+          <button class="btn btn-brand w-100 py-2 shadow-sm" type="button" data-bs-toggle="modal" data-bs-target="#busExpenseModal">
+            <i class="bi bi-wallet2 fs-4 d-block mb-1"></i>
+            <span class="small">Расход бизнеса</span>
+          </button>
+        </div>
+      </div>
+
+      <h6 class="text-muted mb-3 fw-bold small text-uppercase"><i class="bi bi-clock-history me-1"></i> Недавние операции</h6>
+      <div id="cash-history-container">
+        <div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></div>
+      </div>
+    </div>
+
+    <div id="screen-cars-list" class="container mt-4" style="display: none;">
+      <h3 class="fw-bold mb-3">Реестр автомобилей</h3>
+      <div id="cars-table-container">
+        <div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></div>
+      </div>
+    </div>
+
+    <div id="screen-car-card" class="container mt-4" style="display: none;">
+      <button class="btn btn-link text-decoration-none text-muted p-0 mb-3" onclick="showCarsScreen()"><i class="bi bi-arrow-left me-1"></i> К списку машин</button>
+
+      <div class="card mb-3" style="border-top: 5px solid var(--brand-blue);">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <h4 id="card-model-title" class="fw-bold mb-0 text-dark">Марка</h4>
+            <span id="card-status" class="badge rounded-pill px-3 py-2 fs-6">Статус</span>
+          </div>
+          
+          <div class="row g-2 mb-2">
+            <div class="col-6"><label class="small text-muted mb-0">Клиент</label><input type="text" id="card-edit-client" class="form-control form-control-sm bg-light"></div>
+            <div class="col-6"><label class="small text-muted mb-0">Телефон</label><input type="text" id="card-edit-phone" class="form-control form-control-sm bg-light"></div>
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col-6"><label class="small text-muted mb-0">Госномер</label><input type="text" id="card-edit-number" class="form-control form-control-sm bg-light text-uppercase"></div>
+            <div class="col-6"><label class="small text-muted mb-0">Цена работы (руб)</label><input type="number" id="card-edit-price" class="form-control form-control-sm bg-light fw-bold" onchange="syncFinalPrice()"></div>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-12">
+              <label class="small text-muted mb-0">Принято в работу:</label>
+              <input type="date" id="card-edit-date-in" class="form-control form-control-sm bg-light fw-bold">
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <label class="small text-muted mb-0">Блокнот / Заметки</label>
+            <textarea id="carNotes" class="form-control form-control-sm bg-light" rows="2"></textarea>
+          </div>
+          
+          <button id="updateCarBtn" class="btn w-100 btn-outline-primary shadow-sm" onclick="saveCarCardChanges()">💾 Сохранить изменения</button>
+          
+          <button id="reopenCarBtn" class="btn w-100 btn-warning shadow-sm mt-3 fw-bold text-dark" onclick="reopenCurrentCar()" style="display: none;">
+            <i class="bi bi-arrow-counterclockwise me-1"></i> Отменить выдачу (вернуть в работу)
+          </button>
+        </div>
+      </div>
+
+      <div id="expense-form-block" class="card mb-3 bg-white border">
+        <div class="card-body p-3">
+          <h6 class="fw-bold mb-3"><i class="bi bi-tools text-secondary me-2"></i>Добавить расход на авто</h6>
+          <div class="row g-2 mb-2">
+            <div class="col-5">
+              <select id="expType" class="form-select form-select-sm"><option value="Материалы">Материалы</option><option value="Мастер">Мастер</option></select>
+            </div>
+            <div class="col-7">
+              <input type="number" id="expAmount" class="form-control form-control-sm" placeholder="Сумма (руб.)">
+            </div>
+          </div>
+          <div class="input-group input-group-sm">
+            <input type="text" id="expComment" class="form-control" placeholder="Название детали / имя мастера">
+            <button id="addExpBtn" class="btn btn-secondary px-3" onclick="addExpense()">Добавить</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-3 border">
+        <div class="card-body p-3">
+          <h6 class="fw-bold mb-3 text-muted small text-uppercase">Смета расходов</h6>
+          <div id="expenses-list-container" class="mb-3"><div class="spinner-border spinner-border-sm text-primary" role="status"></div></div>
+          
+          <div class="p-2 rounded bg-light small">
+            <div class="d-flex justify-content-between mb-1"><span>Материалы:</span><span id="total-materials-display" class="fw-bold">0</span></div>
+            <div class="d-flex justify-content-between mb-1"><span>Мастера:</span><span id="total-masters-display" class="fw-bold">0</span></div>
+            <hr class="my-1 border-secondary">
+            <div class="d-flex justify-content-between text-danger fw-bold"><span>Всего затрат:</span><span><span id="total-expenses">0</span> руб.</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="close-car-block" class="card border mb-4 bg-white">
+        <div class="card-body p-3 text-center">
+          <h6 class="text-success fw-bold mb-3"><i class="bi bi-check-circle-fill me-1"></i> Выдача автомобиля</h6>
+          
+          <div class="text-start mb-3">
+            <label class="small text-muted mb-1 fw-bold">Дата выдачи клиенту:</label>
+            <input type="date" id="closeCarDate" class="form-control bg-light">
+          </div>
+
+          <div class="input-group mb-3 shadow-sm">
+            <span class="input-group-text bg-white border-end-0 text-muted">К оплате:</span>
+            <input type="number" id="finalPrice" class="form-control border-start-0 fw-bold fs-5 text-end">
+            <span class="input-group-text bg-white">руб.</span>
+          </div>
+          <button id="closeCarBtn" class="btn w-100 py-2 fs-6 shadow-sm text-white" style="background-color: var(--brand-green);" onclick="closeCar()">Выдать авто и закрыть заказ</button>
+        </div>
+      </div>
+
+      <button class="btn btn-link text-danger w-100 text-decoration-none mt-2 mb-4" onclick="removeCurrentCar()"><i class="bi bi-trash3 me-1"></i>Удалить эту машину из базы</button>
+    </div>
+
+    <div id="screen-reports" class="container mt-4" style="display: none;">
+      <h3 class="fw-bold mb-3">Отчеты мастерской</h3>
+      
+      <div class="card mb-4 bg-white border shadow-sm" id="report-filter-card">
+        <div class="card-body p-3">
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="small text-muted mb-1 ps-1">Начало периода:</label>
+              <input type="date" id="reportStart" class="form-control">
+            </div>
+            <div class="col-6">
+              <label class="small text-muted mb-1 ps-1">Конец периода:</label>
+              <input type="date" id="reportEnd" class="form-control">
+            </div>
+          </div>
+          <button id="loadReportBtn" class="btn btn-brand w-100 mt-3 py-2" onclick="loadReport()">
+            <i class="bi bi-bar-chart-fill me-1"></i> Сформировать отчет
+          </button>
+        </div>
+      </div>
+
+      <div id="report-results" style="display: none; padding-bottom: 20px;">
+        <button id="downloadPdfBtn" class="btn btn-outline-primary w-100 mb-4 fw-bold" onclick="downloadPDF()">
+          <i class="bi bi-file-earmark-pdf-fill me-2"></i>Скачать отчет (PDF)
+        </button>
+
+        <div class="mb-3 ps-1">
+          <h5 class="fw-bold text-dark mb-0" id="rep-period-display">Период отчета: —</h5>
+        </div>
+
+        <div class="row g-3 mb-4">
+          <div class="col-6">
+            <div class="card text-white h-100" style="background-color: var(--brand-blue);">
+              <div class="card-body text-center p-3">
+                <i class="bi bi-car-front fs-3 opacity-50 mb-1 d-block"></i>
+                <h2 id="rep-cars-count" class="fw-bold mb-0">0</h2>
+                <small class="opacity-75" style="font-size: 12px;">Авто сдано</small>
+              </div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="card text-white h-100" style="background-color: var(--brand-green);">
+              <div class="card-body text-center p-3">
+                <i class="bi bi-cash-stack fs-3 opacity-50 mb-1 d-block"></i>
+                <h2 id="rep-net-profit" class="fw-bold mb-0">0</h2>
+                <small class="opacity-75" style="font-size: 12px;">Чистая прибыль (руб.)</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <h6 class="fw-bold mb-3 text-muted small text-uppercase">Движение средств</h6>
+        <div class="card mb-4 border">
+          <div class="card-body p-0">
+            <ul class="list-group list-group-flush rounded-3">
+              <li class="list-group-item d-flex justify-content-between py-3">
+                <span class="text-muted">Выручка с клиентов:</span>
+                <strong id="rep-revenue" class="text-dark">0 р.</strong>
+              </li>
+              
+              <li class="list-group-item p-0 bg-light border-bottom">
+                <div class="d-flex justify-content-between py-2 px-3 align-items-center" data-bs-toggle="collapse" href="#collapseMaterials" style="cursor: pointer;">
+                  <span class="text-muted small"><i class="bi bi-chevron-down me-1"></i> - Запчасти/материалы:</span>
+                  <span id="rep-materials" class="text-secondary small fw-bold">0 р.</span>
+                </div>
+                <div class="collapse" id="collapseMaterials">
+                  <ul class="list-group list-group-flush border-top" id="rep-materials-list"></ul>
+                </div>
+              </li>
+
+              <li class="list-group-item p-0 bg-light border-bottom">
+                <div class="d-flex justify-content-between py-2 px-3 align-items-center" data-bs-toggle="collapse" href="#collapseMasters" style="cursor: pointer;">
+                  <span class="text-muted small"><i class="bi bi-chevron-down me-1"></i> - Зарплата мастерам:</span>
+                  <span id="rep-masters" class="text-secondary small fw-bold">0 р.</span>
+                </div>
+                <div class="collapse" id="collapseMasters">
+                  <ul class="list-group list-group-flush border-top" id="rep-masters-list"></ul>
+                </div>
+              </li>
+
+              <li class="list-group-item d-flex justify-content-between py-3">
+                <span class="fw-bold text-dark">Прибыль (только с auto):</span>
+                <strong id="rep-cars-profit" class="text-success">0 р.</strong>
+              </li>
+              
+              <li class="list-group-item d-flex justify-content-between py-3">
+                <span class="text-muted">Постоянные расходы бизнеса:</span>
+                <strong id="rep-bus-expenses" class="text-dark">0 р.</strong>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <h6 class="fw-bold mb-3 text-muted small text-uppercase">Расходы бизнеса подробно:</h6>
+        <div id="report-categories-container" class="mb-5"></div>
+      </div>
+    </div>
+
+    <div id="bottom-menu" class="bottom-nav">
+      <div id="nav-main" class="nav-item active" onclick="showMainScreen()"><i class="bi bi-house-door-fill"></i> Главная</div>
+      <div id="nav-cars" class="nav-item" onclick="showCarsScreen()"><i class="bi bi-car-front-fill"></i> Машины</div>
+      <div id="nav-reports" class="nav-item" onclick="showReportsScreen()"><i class="bi bi-pie-chart-fill"></i> Отчеты</div>
+    </div>
+
+    <div class="modal fade" id="addCarModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow">
+          <div class="modal-header border-0 text-white" style="background-color: var(--brand-blue);">
+            <h5 class="modal-title fw-bold"><i class="bi bi-plus-circle me-2"></i>Принять авто</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+          </div>
+          <div class="modal-body p-4 bg-light">
+            <div class="form-floating mb-3">
+              <input type="text" id="clientName" class="form-control" placeholder="Имя">
+              <label class="text-muted">Имя клиента</label>
+            </div>
+            <div class="form-floating mb-3">
+              <input type="tel" id="clientPhone" class="form-control" placeholder="Телефон">
+              <label class="text-muted">Телефон</label>
+            </div>
+            <div class="form-floating mb-3">
+              <input type="text" id="carModel" class="form-control" placeholder="Марка">
+              <label class="text-muted">Марка и модель</label>
+            </div>
+            <div class="form-floating mb-3">
+              <input type="text" id="carNumber" class="form-control text-uppercase" placeholder="Номер">
+              <label class="text-muted">Госномер</label>
+            </div>
+            <div class="form-floating mb-3">
+              <input type="number" id="carPrice" class="form-control fw-bold" placeholder="Сумма">
+              <label class="text-muted">Ориентировочная стоимость (руб.)</label>
+            </div>
+            <div class="form-floating mb-4">
+              <input type="date" id="newCarDateIn" class="form-control">
+              <label class="text-muted">Дата приемки</label>
+            </div>
+            <button id="saveBtn" class="btn btn-brand w-100 py-2 shadow-sm" type="button" onclick="saveCarData()">Сохранить в базу</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="busExpenseModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow">
+          <div class="modal-header border-0 text-white" style="background-color: var(--brand-blue);">
+            <h5 class="modal-title fw-bold"><i class="bi bi-wallet2 me-2"></i>Записать расход</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+          </div>
+          <div class="modal-body p-4 bg-light">
+            <div class="mb-3">
+              <label class="form-label small text-muted fw-bold">Дата</label>
+              <input type="date" id="busDate" class="form-control">
+            </div>
+            <div class="mb-3">
+              <label class="form-label small text-muted fw-bold">Категория</label>
+              <select id="busCategory" class="form-select"><option>Загрузка...</option></select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small text-muted fw-bold">Сумма (руб.)</label>
+              <input type="number" id="busAmount" class="form-control form-control-lg fw-bold" placeholder="0">
+            </div>
+            <div class="mb-4">
+              <label class="form-label small text-muted fw-bold">Комментарий</label>
+              <input type="text" id="busComment" class="form-control" placeholder="Например: Аренда за июль">
+            </div>
+            <button id="saveBusBtn" class="btn btn-brand w-100 py-2 shadow-sm" onclick="addBusExpense()">Сохранить расход</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+      import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, getDoc } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyDBR4lI9WR0L8tyr7kJd26TdqakzpkjPs0",
+        authDomain: "vorona-car-accounting.firebaseapp.com",
+        projectId: "vorona-car-accounting",
+        storageBucket: "vorona-car-accounting.firebasestorage.app",
+        messagingSenderId: "1047561349469",
+        appId: "1:1047561349469:web:995c43b345b957ff23e0b4",
+        measurementId: "G-S3DQ3Y1K2F"
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+
+      // Делаем функции доступными для кнопок в HTML (так как это type="module")
+      window.showMainScreen = showMainScreen;
+      window.showCarsScreen = showCarsScreen;
+      window.showReportsScreen = showReportsScreen;
+      window.saveCarData = saveCarData;
+      window.openCarCard = openCarCard;
+      window.syncFinalPrice = syncFinalPrice;
+      window.saveCarCardChanges = saveCarCardChanges;
+      window.reopenCurrentCar = reopenCurrentCar;
+      window.addExpense = addExpense;
+      window.removeExpense = removeExpense;
+      window.removeCurrentCar = removeCurrentCar;
+      window.removeCashOp = removeCashOp;
+      window.closeCar = closeCar;
+      window.addBusExpense = addBusExpense;
+      window.loadReport = loadReport;
+      window.downloadPDF = downloadPDF;
+
+      var globalCarsData = []; 
+      var globalCurrentCarId = ""; 
+      var globalExpensesTotal = 0; 
+      var globalMatTotal = 0; 
+      var globalMastTotal = 0;
+      const staticCategories = ["Аренда", "Коммуналка", "Реклама", "Налоги", "Инструмент", "Прочее"];
+
+      function toInputDate(ruDate) {
+        if(!ruDate) return "";
+        var p = ruDate.split('.');
+        if(p.length === 3) return p[2] + '-' + p[1] + '-' + p[0];
+        return ruDate;
+      }
+      function toRuDate(inDate) {
+        if(!inDate) return "";
+        var p = inDate.split('-');
+        if(p.length === 3) return p[2] + '.' + p[1] + '.' + p[0];
+        return inDate;
+      }
+      function parseDateStr(str) {
+        if (!str) return null;
+        var parts = str.split('.');
+        if (parts.length !== 3) return null;
+        return new Date(parts[2], parts[1] - 1, parts[0]);
+      }
+
+      window.onload = function() {
+        getCashData();
+        document.getElementById('busDate').valueAsDate = new Date();
+        document.getElementById('newCarDateIn').valueAsDate = new Date();
+      };
+
+      async function getCashData() {
+        try {
+          const qSnapshot = await getDocs(collection(db, "cash_flow"));
+          var ops = [];
+          qSnapshot.forEach((doc) => {
+            ops.push({ id: doc.id, ...doc.data() });
+          });
+          ops.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+          var balance = 0;
+          for(var i=0; i<ops.length; i++) {
+            var type = ops[i].type; 
+            var amount = parseFloat(ops[i].amount) || 0;
+            if(type === "Приход") balance += amount;
+            if(type === "Расход") balance -= amount;
+          }
+          document.getElementById('main-balance').innerText = balance + " руб.";
+          
+          var catSelect = document.getElementById('busCategory'); 
+          catSelect.innerHTML = ""; 
+          staticCategories.forEach(cat => {
+            var opt = document.createElement('option'); 
+            opt.value = cat; opt.innerHTML = cat; 
+            catSelect.appendChild(opt);
+          });
+
+          if (ops.length === 0) {
+            document.getElementById('cash-history-container').innerHTML = '<div class="card"><div class="card-body text-center text-muted small">Операций пока нет.</div></div>'; 
+            return;
+          }
+          
+          var html = '<div class="card"><ul class="list-group list-group-flush rounded-3">';
+          for (var j = ops.length - 1; j >= 0; j--) {
+            var isIncome = (ops[j].type === "Приход");
+            var icon = isIncome ? '<i class="bi bi-arrow-down-circle text-success fs-5 me-3"></i>' : '<i class="bi bi-arrow-up-circle text-danger fs-5 me-3"></i>';
+            
+            html += '<li class="list-group-item d-flex justify-content-between align-items-center py-3">';
+            html += '<div class="d-flex align-items-center">' + icon + '<div><h6 class="mb-0 fw-bold text-dark" style="font-size:14px;">' + ops[j].category + '</h6><small class="text-muted" style="font-size:11px;">' + ops[j].date + (ops[j].comment ? " &middot; " + ops[j].comment : "") + '</small></div></div>';
+            html += '<div class="d-flex align-items-center">';
+            html += '<strong class="' + (isIncome ? "text-success" : "text-danger") + '">' + (isIncome ? "+" : "-") + ops[j].amount + ' р.</strong>';
+            html += `<button class="btn btn-sm btn-link text-secondary p-0 ms-3" onclick="removeCashOp('${ops[j].id}')"><i class="bi bi-trash3"></i></button>`;
+            html += '</div></li>';
+          }
+          html += '</ul></div>';
+          document.getElementById('cash-history-container').innerHTML = html;
+        } catch(e) { console.error(e); }
+      }
+
+      function showMainScreen() {
+        document.getElementById('screen-main').style.display = 'block'; 
+        document.getElementById('screen-cars-list').style.display = 'none'; 
+        document.getElementById('screen-car-card').style.display = 'none'; 
+        document.getElementById('screen-reports').style.display = 'none'; 
+        document.getElementById('nav-main').className = 'nav-item active'; 
+        document.getElementById('nav-cars').className = 'nav-item'; 
+        document.getElementById('nav-reports').className = 'nav-item';
+        document.getElementById('main-balance').innerHTML = '<span class="spinner-border spinner-border-sm text-success" role="status"></span>';
+        getCashData();
+      }
+
+      async function saveCarData() {
+        var name = document.getElementById('clientName').value; 
+        var phone = document.getElementById('clientPhone').value; 
+        var model = document.getElementById('carModel').value; 
+        var number = document.getElementById('carNumber').value; 
+        var price = document.getElementById('carPrice').value || 0; 
+        var rawDate = document.getElementById('newCarDateIn').value;
+        if(model === "") { alert("Введите марку машины!"); return; }
+        
+        var dateInRu = toRuDate(rawDate);
+        var btn = document.getElementById('saveBtn'); 
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Сохраняю...'; 
+        btn.disabled = true;
+
+        try {
+          await addDoc(collection(db, "cars"), {
+            name: name, phone: phone, model: model, number: number, price: price,
+            dateIn: dateInRu, dateOut: "", status: "В работе", notes: "",
+            timestamp: new Date().getTime()
+          });
+          document.getElementById('clientName').value = ""; document.getElementById('clientPhone').value = ""; 
+          document.getElementById('carModel').value = ""; document.getElementById('carNumber').value = ""; 
+          document.getElementById('carPrice').value = "";
+          document.getElementById('newCarDateIn').valueAsDate = new Date();
+          btn.innerHTML = "Сохранить в базу"; btn.disabled = false; 
+          var modal = bootstrap.Modal.getInstance(document.getElementById('addCarModal'));
+          if(modal) modal.hide();
+          showMainScreen();
+        } catch(e) { console.error(e); btn.disabled = false; }
+      }
+
+      async function showCarsScreen() {
+        document.getElementById('screen-main').style.display = 'none'; 
+        document.getElementById('screen-car-card').style.display = 'none'; 
+        document.getElementById('screen-reports').style.display = 'none'; 
+        document.getElementById('screen-cars-list').style.display = 'block'; 
+        document.getElementById('nav-main').className = 'nav-item'; 
+        document.getElementById('nav-reports').className = 'nav-item'; 
+        document.getElementById('nav-cars').className = 'nav-item active';
+        document.getElementById('cars-table-container').innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div></div>';
+        
+        try {
+          const snap = await getDocs(collection(db, "cars"));
+          var data = [];
+          snap.forEach(doc => { data.push({ id: doc.id, ...doc.data() }); });
+          data.sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
+          globalCarsData = data;
+          drawTable(data);
+        } catch(e) { console.error(e); }
+      }
+
+      function drawTable(data) {
+        if (data.length === 0) {
+          document.getElementById('cars-table-container').innerHTML = '<div class="card"><div class="card-body text-center text-muted">Машин в базе пока нет.</div></div>'; 
+          return;
+        }
+        var html = '<div class="table-custom"><table class="table table-hover align-middle mb-0 border-white">';
+        html += '<thead class="table-light text-muted text-uppercase"><tr class="fs-6 fw-bold"><th class="ps-3 py-3 border-0">Авто / Клиент</th><th class="py-3 border-0">Даты</th><th class="py-3 border-0">Стоимость</th><th class="pe-3 py-3 border-0 text-end">Статус</th></tr></thead><tbody>';
+        
+        for (var i = 0; i < data.length; i++) {
+          var isDone = (data[i].status === "Выдан");
+          var badgeClass = isDone ? "bg-success" : "bg-primary";
+          var priceDisplay = data[i].price ? data[i].price + ' р.' : '—';
+
+          html += `<tr style="cursor: pointer;" onclick="openCarCard(${i})">`;
+          html += '<td class="ps-3 border-light"><strong class="text-dark d-block mb-1 fs-6">' + data[i].model + '</strong><span class="text-muted"><i class="bi bi-person-fill"></i> ' + (data[i].name || "Без имени") + '</span></td>';
+          html += '<td class="border-light"><small class="text-secondary d-block">Принято в работу: ' + data[i].dateIn + '</small><small class="text-secondary d-block">Выдано клиенту: ' + (data[i].dateOut ? data[i].dateOut : '—') + '</small></td>';
+          html += '<td class="border-light fw-bold text-dark">' + priceDisplay + '</td>';
+          html += '<td class="pe-3 border-light text-end"><span class="badge rounded-pill ' + badgeClass + ' fs-6 px-3 py-2">' + data[i].status + '</span></td></tr>';
+        }
+        html += '</tbody></table></div>'; 
+        document.getElementById('cars-table-container').innerHTML = html;
+      }
+
+      async function openCarCard(index) {
+        var row = globalCarsData[index]; 
+        globalCurrentCarId = row.id; 
+        var status = row.status; 
+        var agreedPrice = row.price || 0; 
+        var notesText = row.notes || "";  
+        
+        document.getElementById('card-model-title').innerText = row.model + " " + (row.number ? "[" + row.number + "]" : "");
+        document.getElementById('card-edit-client').value = row.name; 
+        document.getElementById('card-edit-phone').value = row.phone; 
+        document.getElementById('card-edit-number').value = row.number; 
+        document.getElementById('card-edit-price').value = agreedPrice; 
+        document.getElementById('carNotes').value = notesText; 
+        document.getElementById('finalPrice').value = agreedPrice;
+        document.getElementById('card-edit-date-in').value = toInputDate(row.dateIn);
+        document.getElementById('closeCarDate').valueAsDate = new Date();
+
+        var badge = document.getElementById('card-status');
+        badge.innerText = status; 
+        badge.className = (status === "Выдан") ? "badge rounded-pill bg-success fs-6" : "badge rounded-pill bg-primary fs-6";
+
+        if(status === "Выдан") {
+          document.getElementById('expense-form-block').style.display = 'none'; 
+          document.getElementById('close-car-block').style.display = 'none'; 
+          document.getElementById('updateCarBtn').style.display = 'none';
+          document.getElementById('reopenCarBtn').style.display = 'block'; 
+          document.getElementById('card-edit-client').disabled = true; document.getElementById('card-edit-phone').disabled = true; document.getElementById('card-edit-number').disabled = true; document.getElementById('card-edit-price').disabled = true; document.getElementById('carNotes').disabled = true; document.getElementById('card-edit-date-in').disabled = true;
+        } else {
+          document.getElementById('expense-form-block').style.display = 'block'; 
+          document.getElementById('close-car-block').style.display = 'block'; 
+          document.getElementById('updateCarBtn').style.display = 'block';
+          document.getElementById('reopenCarBtn').style.display = 'none'; 
+          document.getElementById('card-edit-client').disabled = false; document.getElementById('card-edit-phone').disabled = false; document.getElementById('card-edit-number').disabled = false; document.getElementById('card-edit-price').disabled = false; document.getElementById('carNotes').disabled = false; document.getElementById('card-edit-date-in').disabled = false;
+        }
+        document.getElementById('screen-cars-list').style.display = 'none'; 
+        document.getElementById('screen-car-card').style.display = 'block';
+        document.getElementById('expenses-list-container').innerHTML = '<div class="text-center py-2"><div class="spinner-border spinner-border-sm text-primary" role="status"></div></div>';
+        
+        getCarExpenses(globalCurrentCarId);
+      }
+
+      async function getCarExpenses(carId) {
+        try {
+          const q = query(collection(db, "car_expenses"), where("carId", "==", carId));
+          const snap = await getDocs(q);
+          var exps = [];
+          snap.forEach(doc => { exps.push({ id: doc.id, ...doc.data() }); });
+          drawExpenses(exps);
+        } catch(e) { console.error(e); }
+      }
+
+      function syncFinalPrice() { 
+        document.getElementById('finalPrice').value = document.getElementById('card-edit-price').value; 
+      }
+
+      async function saveCarCardChanges() {
+        var name = document.getElementById('card-edit-client').value; 
+        var phone = document.getElementById('card-edit-phone').value; 
+        var num = document.getElementById('card-edit-number').value; 
+        var prc = document.getElementById('card-edit-price').value || 0; 
+        var nts = document.getElementById('carNotes').value;
+        var rawDate = document.getElementById('card-edit-date-in').value; 
+        var ruDate = toRuDate(rawDate);
+        
+        var btn = document.getElementById('updateCarBtn'); btn.innerHTML = "⏳"; btn.disabled = true;
+        try {
+          const carRef = doc(db, "cars", globalCurrentCarId);
+          await updateDoc(carRef, {
+            name: name, phone: phone, number: num, price: prc, notes: nts, dateIn: ruDate
+          });
+          btn.innerHTML = "✅ Сохранено"; 
+          setTimeout(function(){ btn.innerHTML = "💾 Сохранить изменения"; btn.disabled = false; }, 1500);
+        } catch(e) { console.error(e); btn.disabled = false; }
+      }
+
+      async function reopenCurrentCar() {
+        if(!confirm("Вернуть машину в работу?\n\nЗапись о прибыли будет удалена из кассы, и вы сможете отредактировать все суммы и расходы.")) return;
+        var btn = document.getElementById('reopenCarBtn');
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Возвращаю...'; btn.disabled = true;
+        
+        try {
+          const carRef = doc(db, "cars", globalCurrentCarId);
+          await updateDoc(carRef, { dateOut: "", status: "В работе" });
+          
+          const q = query(collection(db, "cash_flow"), where("carId", "==", globalCurrentCarId));
+          const snap = await getDocs(q);
+          snap.forEach(async (d) => {
+            await deleteDoc(doc(db, "cash_flow", d.id));
+          });
+          
+          btn.disabled = false;
+          btn.innerHTML = '<i class="bi bi-arrow-counterclockwise me-1"></i> Отменить выдачу (вернуть в работу)';
+          alert("Машина снова в работе! Теперь можно вносить любые изменения.");
+          showCarsScreen();
+        } catch(e) { console.error(e); btn.disabled = false; }
+      }
+
+      function drawExpenses(data) {
+        globalMatTotal = 0; globalMastTotal = 0; globalExpensesTotal = 0;
+        if (data.length === 0) {
+          document.getElementById('expenses-list-container').innerHTML = '<div class="text-muted small text-center py-2 bg-light rounded">Трат пока не добавлено.</div>';
+          document.getElementById('total-materials-display').innerText = "0"; 
+          document.getElementById('total-masters-display').innerText = "0"; 
+          document.getElementById('total-expenses').innerText = "0"; 
+          return;
+        }
+        var html = '<ul class="list-group list-group-flush border rounded-3">';
+        for (var i = 0; i < data.length; i++) {
+          var type = data[i].type; 
+          var amount = parseFloat(data[i].amount) || 0; 
+          var comment = data[i].comment;
+          globalExpensesTotal += amount; 
+          var isMat = (type === "Материалы");
+          if(isMat) { globalMatTotal += amount; } else { globalMastTotal += amount; }
+          
+          var badgeDot = isMat ? '<span class="badge text-dark rounded-pill me-2 px-2" style="background-color: #FFD791;">Материалы</span>' : '<span class="badge text-dark rounded-pill me-2 px-2" style="background-color: #C6C2FF;">Мастер</span>';
+          
+          html += '<li class="list-group-item d-flex justify-content-between align-items-center py-2 px-2 border-light">';
+          html += '<div class="text-truncate" style="max-width: 65%;">' + badgeDot + '<small class="fw-bold text-dark">' + comment + '</small></div>';
+          html += '<div class="d-flex align-items-center"><strong class="small text-danger me-2">-' + amount + ' р.</strong>';
+          
+          if(document.getElementById('card-status').innerText !== "Выдан") {
+            html += `<button class="btn btn-sm btn-link text-danger p-0" onclick="removeExpense('${data[i].id}')"><i class="bi bi-trash3"></i></button>`;
+          }
+          html += '</div></li>';
+        }
+        html += '</ul>';
+        document.getElementById('expenses-list-container').innerHTML = html;
+        document.getElementById('total-materials-display').innerText = globalMatTotal; 
+        document.getElementById('total-masters-display').innerText = globalMastTotal; 
+        document.getElementById('total-expenses').innerText = globalExpensesTotal; 
+      }
+
+      async function addExpense() {
+        var type = document.getElementById('expType').value; 
+        var amount = document.getElementById('expAmount').value; 
+        var comment = document.getElementById('expComment').value;
+        if (amount === "") { alert("Введите сумму расхода!"); return; }
+        
+        var btn = document.getElementById('addExpBtn'); btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>'; btn.disabled = true;
+        try {
+          await addDoc(collection(db, "car_expenses"), {
+            carId: globalCurrentCarId, type: type, amount: amount, comment: comment, timestamp: new Date().getTime()
+          });
+          document.getElementById('expAmount').value = ""; document.getElementById('expComment').value = ""; 
+          btn.innerHTML = "Добавить"; btn.disabled = false;
+          getCarExpenses(globalCurrentCarId);
+        } catch(e) { console.error(e); btn.disabled = false; }
+      }
+
+      async function removeExpense(expId) {
+        if(!confirm("Точно удалить этот расход?")) return;
+        try {
+          await deleteDoc(doc(db, "car_expenses", expId));
+          getCarExpenses(globalCurrentCarId);
+        } catch(e) { console.error(e); }
+      }
+
+      async function removeCurrentCar() {
+        if(!confirm("Вы уверены, что хотите ПОЛНОСТЬЮ УДАЛИТЬ эту машину из базы?\n\nЭто действие нельзя отменить!")) return;
+        try {
+          await deleteDoc(doc(db, "cars", globalCurrentCarId));
+          
+          const q1 = query(collection(db, "car_expenses"), where("carId", "==", globalCurrentCarId));
+          const snap1 = await getDocs(q1);
+          snap1.forEach(async (d) => { await deleteDoc(doc(db, "car_expenses", d.id)); });
+          
+          const q2 = query(collection(db, "cash_flow"), where("carId", "==", globalCurrentCarId));
+          const snap2 = await getDocs(q2);
+          snap2.forEach(async (d) => { await deleteDoc(doc(db, "cash_flow", d.id)); });
+          
+          alert("Машина удалена!");
+          showCarsScreen();
+        } catch(e) { console.error(e); }
+      }
+
+      async function removeCashOp(opId) {
+        if(!confirm("Удалить эту операцию из кассы?")) return;
+        try {
+          await deleteDoc(doc(db, "cash_flow", opId));
+          getCashData();
+        } catch(e) { console.error(e); }
+      }
+
+      async function closeCar() {
+        var finalPrice = document.getElementById('finalPrice').value; 
+        if (finalPrice === "") { alert("Введите итоговую стоимость!"); return; }
+        
+        var rawDate = document.getElementById('closeCarDate').value;
+        if(!rawDate) { alert("Укажите дату выдачи!"); return; }
+        var dateOutRu = toRuDate(rawDate);
+        
+        var modelTitle = document.getElementById('card-model-title').innerText;
+        var clientName = document.getElementById('card-edit-client').value || "Без имени";
+        var clientPhone = document.getElementById('card-edit-phone').value || "Нет тел.";
+        var fullCarTitleForCash = modelTitle + " (" + clientName + " · " + clientPhone + ")";
+
+        var btn = document.getElementById('closeCarBtn'); btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Обработка...'; btn.disabled = true;
+        try {
+          const carRef = doc(db, "cars", globalCurrentCarId);
+          await updateDoc(carRef, { dateOut: dateOutRu, status: "Выдан" });
+          
+          var profit = finalPrice - globalExpensesTotal;
+          await addDoc(collection(db, "cash_flow"), {
+            date: dateOutRu, type: "Приход", category: "Прибыль по авто", amount: profit, carId: globalCurrentCarId, comment: fullCarTitleForCash, timestamp: new Date().getTime()
+          });
+          btn.innerHTML = "Выдать авто и закрыть заказ"; btn.disabled = false; 
+          showCarsScreen();
+        } catch(e) { console.error(e); btn.disabled = false; }
+      }
+
+      async function addBusExpense() {
+        var rawDate = document.getElementById('busDate').value; if(!rawDate) { alert("Выберите дату!"); return; }
+        var dateParts = rawDate.split('-'); var niceDate = dateParts[2] + '.' + dateParts[1] + '.' + dateParts[0];
+        var category = document.getElementById('busCategory').value; 
+        var amount = document.getElementById('busAmount').value; 
+        var comment = document.getElementById('busComment').value;
+        if (amount === "") { alert("Введите сумму!"); return; }
+        
+        var btn = document.getElementById('saveBusBtn'); btn.innerHTML = "Сохраняю..."; btn.disabled = true;
+        try {
+          await addDoc(collection(db, "cash_flow"), {
+            date: niceDate, type: "Расход", category: category, amount: amount, comment: comment, carId: "", timestamp: new Date().getTime()
+          });
+          document.getElementById('busAmount').value = ""; document.getElementById('busComment').value = ""; 
+          btn.innerHTML = "Сохранить расход"; btn.disabled = false; 
+          var modal = bootstrap.Modal.getInstance(document.getElementById('busExpenseModal'));
+          if(modal) modal.hide();
+          getCashData();
+        } catch(e) { console.error(e); btn.disabled = false; }
+      }
+
+      function showReportsScreen() {
+        document.getElementById('screen-main').style.display = 'none'; 
+        document.getElementById('screen-car-card').style.display = 'none'; 
+        document.getElementById('screen-cars-list').style.display = 'none'; 
+        document.getElementById('screen-reports').style.display = 'block'; 
+        document.getElementById('nav-main').className = 'nav-item'; 
+        document.getElementById('nav-cars').className = 'nav-item'; 
+        document.getElementById('nav-reports').className = 'nav-item active';
+
+        if(!document.getElementById('reportStart').value) {
+          var today = new Date();
+          var firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+          document.getElementById('reportStart').valueAsDate = firstDay;
+          document.getElementById('reportEnd').valueAsDate = today;
+        }
+      }
+
+      async function loadReport() {
+        var startStr = document.getElementById('reportStart').value;
+        var endStr = document.getElementById('reportEnd').value;
+        if(!startStr || !endStr) { alert("Выберите даты начала и конца периода!"); return; }
+
+        document.getElementById('rep-period-display').innerText = "Период отчета: " + toRuDate(startStr) + " – " + toRuDate(endStr);
+        var btn = document.getElementById('loadReportBtn');
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Считаю...'; btn.disabled = true;
+
+        try {
+          var startParts = startStr.split('-');
+          var endParts = endStr.split('-');
+          var start = new Date(startParts[0], startParts[1] - 1, startParts[2]);
+          var end = new Date(endParts[0], endParts[1] - 1, endParts[2]);
+          end.setHours(23, 59, 59, 999);
+
+          // Тянем все данные
+          const carsSnap = await getDocs(collection(db, "cars"));
+          const expsSnap = await getDocs(collection(db, "car_expenses"));
+          const cashSnap = await getDocs(collection(db, "cash_flow"));
+
+          var stats = {
+            carsCount: 0, totalRevenue: 0, totalMaterials: 0, totalMasters: 0,
+            carsProfit: 0, businessExpenses: 0, netProfit: 0,
+            expensesByCategory: {}, materialsList: [], mastersList: []
+          };
+          var closedCarIds = {}; 
+          var closedCarsNames = {};
+
+          carsSnap.forEach(dDoc => {
+            var row = dDoc.data();
+            if (row.status === "Выдан" && row.dateOut) {
+              var dOut = parseDateStr(row.dateOut);
+              if (dOut && dOut >= start && dOut <= end) {
+                var cId = dDoc.id;
+                closedCarIds[cId] = true;
+                closedCarsNames[cId] = row.model + (row.number ? " [" + row.number + "]" : "");
+                stats.carsCount++;
+                stats.totalRevenue += parseFloat(row.price) || 0;
+              }
+            }
+          });
+
+          expsSnap.forEach(eDoc => {
+            var row = eDoc.data();
+            if (closedCarIds[row.carId]) {
+              var amt = parseFloat(row.amount) || 0;
+              var detailObj = { carName: closedCarsNames[row.carId], comment: row.comment, amount: amt };
+              if (row.type === "Материалы") {
+                stats.totalMaterials += amt;
+                stats.materialsList.push(detailObj);
+              } else {
+                stats.totalMasters += amt;
+                stats.mastersList.push(detailObj);
+              }
+            }
+          });
+
+          stats.carsProfit = stats.totalRevenue - stats.totalMaterials - stats.totalMasters;
+
+          cashSnap.forEach(cDoc => {
+            var row = cDoc.data();
+            if (row.date) {
+              var cDate = parseDateStr(row.date);
+              if (cDate && cDate >= start && cDate <= end) {
+                if (row.type === "Расход") {
+                  var amt = parseFloat(row.amount) || 0;
+                  stats.businessExpenses += amt;
+                  if (!stats.expensesByCategory[row.category]) stats.expensesByCategory[row.category] = 0;
+                  stats.expensesByCategory[row.category] += amt;
+                }
+              }
+            }
+          });
+
+          stats.netProfit = stats.carsProfit - stats.businessExpenses;
+
+          // Отрисовка
+          document.getElementById('rep-cars-count').innerText = stats.carsCount;
+          document.getElementById('rep-revenue').innerText = stats.totalRevenue + " р.";
+          document.getElementById('rep-materials').innerText = stats.totalMaterials + " р.";
+          document.getElementById('rep-masters').innerText = stats.totalMasters + " р.";
+          document.getElementById('rep-cars-profit').innerText = stats.carsProfit + " р.";
+          document.getElementById('rep-bus-expenses').innerText = stats.businessExpenses + " р.";
+          document.getElementById('rep-net-profit').innerText = stats.netProfit;
+
+          var matHtml = '';
+          stats.materialsList.forEach(m => {
+            matHtml += '<li class="list-group-item d-flex justify-content-between py-1 bg-white" style="font-size: 11px; padding-left: 2rem !important;">';
+            matHtml += '<span class="text-muted text-truncate" style="max-width: 70%;">' + m.comment + ' <small class="opacity-50 fw-bold">[' + m.carName + ']</small></span>';
+            matHtml += '<span class="text-danger">-' + m.amount + ' р.</span></li>';
+          });
+          if(matHtml === '') matHtml = '<li class="list-group-item text-muted small text-center py-1 bg-white">Нет данных</li>';
+          document.getElementById('rep-materials-list').innerHTML = matHtml;
+
+          var mastHtml = '';
+          stats.mastersList.forEach(w => {
+            mastHtml += '<li class="list-group-item d-flex justify-content-between py-1 bg-white" style="font-size: 11px; padding-left: 2rem !important;">';
+            mastHtml += '<span class="text-muted text-truncate" style="max-width: 70%;">' + w.comment + ' <small class="opacity-50 fw-bold">[' + w.carName + ']</small></span>';
+            mastHtml += '<span class="text-danger">-' + w.amount + ' р.</span></li>';
+          });
+          if(mastHtml === '') mastHtml = '<li class="list-group-item text-muted small text-center py-1 bg-white">Нет данных</li>';
+          document.getElementById('rep-masters-list').innerHTML = mastHtml;
+
+          var catsHtml = '<div class="card mb-3 border"><div class="card-body p-0"><ul class="list-group list-group-flush rounded-3">';
+          var hasCats = false;
+          for(var cat in stats.expensesByCategory) {
+            hasCats = true;
+            catsHtml += '<li class="list-group-item d-flex justify-content-between align-items-center py-3">';
+            catsHtml += '<span class="small fw-bold text-dark">' + cat + '</span>';
+            catsHtml += '<strong class="small text-danger">-' + stats.expensesByCategory[cat] + ' р.</strong>';
+            catsHtml += '</li>';
+          }
+          catsHtml += '</ul></div></div>';
+          if(!hasCats) catsHtml = '<div class="card mb-3 border"><div class="card-body text-center text-muted small">В этот период общих расходов не зафиксировано.</div></div>';
+          document.getElementById('report-categories-container').innerHTML = catsHtml;
+          
+          document.getElementById('report-results').style.display = 'block';
+          btn.innerHTML = '<i class="bi bi-bar-chart-fill me-1"></i> Сформировать отчет'; btn.disabled = false;
+        } catch(e) { console.error(e); btn.disabled = false; }
+      }
+
+      function downloadPDF() {
+        var element = document.getElementById('report-results');
+        var btn = document.getElementById('downloadPdfBtn');
+        btn.style.display = 'none';
+        var opt = {
+          margin:       0.5,
+          filename:     'Отчет_Ворона_Car.pdf',
+          image:        { type: 'jpeg', quality: 0.98 },
+          html2canvas:  { scale: 2, useCORS: true },
+          jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+        };
+        html2pdf().set(opt).from(element).save().then(function() {
+          btn.style.display = 'block';
+        });
+      }
+    </script>
+  </body>
+</html>
